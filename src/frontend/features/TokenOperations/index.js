@@ -5,6 +5,7 @@ import TokenABI from '../../contracts/SimpleDeFiToken.json'
 import TokenAddress from '../../contracts/SimpleDeFiToken-address.json'
 import { useWeb3React } from "@web3-react/core";
 import { localProvider } from '../../components/Wallet';
+import { toast } from 'react-toastify'
 
 const TokenOperations = () => {
   const theme = useTheme();
@@ -12,6 +13,13 @@ const TokenOperations = () => {
   const [totalSupply, setTotalSupply] = useState(0)
   const [yourBalance, setYourBalance] = useState(0)
   const { active, account, library } = useWeb3React()
+
+  const [addressNormal, setAddressNormal] = useState('')
+  const [amountNormal, setAmountNormal] = useState(0)
+  const [addressBurn, setAddressBurn] = useState('')
+  const [amountBurn, setAmountBurn] = useState(0)
+
+
 
   const getTotalSupply = useCallback(async () => {
     try {
@@ -40,6 +48,47 @@ const TokenOperations = () => {
     getYourBalance()
   }, [getTotalSupply, getYourBalance])
 
+  const HandleTransfer = async (autoBurn) => {
+    if (!active) {
+      toast.error("You have to connect wallet to transfer")
+      return
+    }
+    const type = autoBurn ? 'auto burn' : 'normal'
+    const address = autoBurn ? addressBurn : addressNormal
+    const amount = autoBurn ? amountBurn : amountNormal
+
+    if (!ethers.utils.isAddress(address)) {
+      toast.error(`The recepient address for ${type} is not valid address`)
+      return
+    }
+
+    if (isNaN(amount)) {
+      toast.error(`The amount for ${type} is invalid`)
+      return
+    }
+
+    try {
+      const contract = new ethers.Contract(TokenAddress.address, TokenABI.abi, library.getSigner())
+      const tx = autoBurn ? await contract.transferWithAutoBurn(address, ethers.utils.parseUnits(amount, 'ether')) : await contract.transfer(address, ethers.utils.parseUnits(amount, 'ether'))
+      toast.info(`Transferring ${amount} ${type} to ${address}...`)
+      await tx.wait()
+      toast.success(`Transfer ${amount} ${type} to ${address} successfully!`)
+      if (autoBurn) {
+        setAddressBurn('')
+        setAmountBurn(0)
+      }
+      else {
+        setAddressNormal('')
+        setAmountNormal(0)
+      }
+      getTotalSupply()
+      getYourBalance()
+    } catch (error) {
+      toast.error(`Cannot perform ${type} transfer to ${address}`)
+    }
+
+  }
+
   return <>
     <Grid container spacing={2}>
       <Grid item xs={12}><Typography variant='h6'>Simple DeFi Token</Typography></Grid>
@@ -56,29 +105,29 @@ const TokenOperations = () => {
     <Grid container spacing={2}>
       <Grid item xs={12}><Typography variant='h6'>Normal Transfer</Typography></Grid>
       <Grid item xs={12}>
-        <TextField label="Please Enter Recipient's Address" value={""} fullWidth />
+        <TextField label="Please Enter Recipient's Address" value={addressNormal} fullWidth onChange={e => setAddressNormal(e.target.value)} />
       </Grid>
       <Grid item xs={12}>
-        <TextField label="Please Enter Amount to transfer" value={""} fullWidth />
+        <TextField label="Please Enter Amount to transfer" value={amountNormal} fullWidth onChange={e => setAmountNormal(e.target.value)} />
       </Grid>
       <Grid item xs={12}>
-        <Button sx={theme.component.primaryButton} fullWidth>Transfer!</Button>
+        <Button sx={theme.component.primaryButton} fullWidth onClick={() => HandleTransfer(false)}>Transfer!</Button>
       </Grid>
     </Grid>
     <Divider sx={theme.component.divider} />
     <Grid container spacing={2}>
       <Grid item xs={12}><Typography variant='h6'>Transfer with Burn</Typography></Grid>
       <Grid item xs={12}>
-        <TextField label="Please Enter Recipient's Address" value={""} fullWidth />
+        <TextField label="Please Enter Recipient's Address" value={addressBurn} fullWidth onChange={e => setAddressBurn(e.target.value)} />
       </Grid>
       <Grid item xs={12}>
-        <TextField label="Please Enter Amount to transfer (10% of tokens will be burnt automatically)" value={""} fullWidth />
+        <TextField label="Please Enter Amount to transfer (10% of tokens will be burnt automatically)" value={amountBurn} fullWidth onChange={e => setAmountBurn(e.target.value)} />
       </Grid>
       <Grid item xs={12}>
-        <Button sx={theme.component.primaryButton} fullWidth>Transfer with Burn!</Button>
+        <Button sx={theme.component.primaryButton} fullWidth onClick={() => HandleTransfer(true)}>Transfer with Burn!</Button>
       </Grid>
     </Grid>
   </>;
-};
 
-export default TokenOperations;
+}
+export default TokenOperations

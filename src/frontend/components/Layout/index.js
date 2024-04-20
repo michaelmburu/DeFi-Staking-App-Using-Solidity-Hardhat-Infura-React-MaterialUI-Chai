@@ -13,13 +13,16 @@ const drawerWidth = 240;
 const navItems = [{
   title: 'Token Operations',
   link: '/'
+}, {
+  title: 'Liquidity',
+  link: '/liquidity'
 }];
 const appName = 'DeFi Application';
 
 const Layout = ({ children }) => {
   const theme = useTheme();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const {active, account, activate, deactivate} = useWeb3React()
+  const { active, account, activate, deactivate } = useWeb3React()
   const handleDrawerToggle = () => {
     setMobileOpen(prevState => !prevState);
   };

@@ -9,10 +9,12 @@ contract PairFactory is IPairFactory {
     address public rewardTo;
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
+    address private _owner;
 
     // Set default account where LP tokens will be sent to
     constructor() {
         rewardTo = msg.sender;
+        _owner = msg.sender; // this is the default owner
     }
 
     // Return total number of pairs in the DEX
@@ -58,5 +60,9 @@ contract PairFactory is IPairFactory {
     modifier onlyOwner() {
         require(msg.sender == rewardTo, "NOT_OWNER"); 
         _;
+    }
+
+    function owner () external view returns (address) {
+        return _owner;
     }
 }

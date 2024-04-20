@@ -7,29 +7,51 @@
 const { ethers, artifacts } = require("hardhat");
 const fs = require("fs");
 
-// Saves contract to front end
-function saveContractToFrontEnd(contract, name) {
-  const contractsDir = __dirname + "/../src/frontend/contracts"
-  if (!fs.existsSync(contractsDir)) {
-      fs.mkdirSync(contractsDir)
-  }
-  fs.writeFileSync(
-      contractsDir + `/${name}-address.json`,
-      JSON.stringify({ address: contract.address }, undefined, 2)
-  )
-  const contractArtifact = artifacts.readArtifactSync(name)
-  fs.writeFileSync(contractsDir + `/${name}.json`, JSON.stringify(contractArtifact, null, 2), (err) => err && console.error(err))
-}
-
-// Main function
 async function main() {
   const [deployer] = await ethers.getSigners();
-  const tokenContractFactory = await ethers.getContractFactory("SimpleDeFiToken");
-  const token = await tokenContractFactory.deploy();
-  console.log("Simple DeFi Token Contract Address: ", token.address);
+
+  const contractList = [
+    // "Contract Name", "Contract Factory Name"
+    ["Simple DeFi Token", "SimpleDeFiToken"],
+    ["Meme Token", "MemeToken"],
+    ["Pair Factory", "PairFactory"],
+    ["AMM Router", "AMMRouter"], // AMMRouter must come after PairFactory
+  ];
+
+  let pairFactoryAddress;
+
+  // Deploying the smart contracts and save contracts to frontend
+  for (const [name, factory] of contractList) {
+    let contractFactory = await ethers.getContractFactory(factory);
+    let contract = factory === "AMMRouter" ? await contractFactory.deploy(pairFactoryAddress) : await contractFactory.deploy();
+    console.log(`${name} Contract Address:`, contract.address);
+    if (factory === "PairFactory") {
+      pairFactoryAddress = contract.address;
+    }
+    saveContractToFrontend(contract, factory);
+  }
+
   console.log("Deployer: ", deployer.address);
   console.log("Deployer ETH balance: ", (await deployer.getBalance()).toString());
-  saveContractToFrontEnd(token, "SimpleDeFiToken");
+}
+
+function saveContractToFrontend(contract, name) {
+  const contractsDir = __dirname + "/../src/frontend/contracts";
+  if (!fs.existsSync(contractsDir)) {
+    fs.mkdirSync(contractsDir);
+  }
+
+  fs.writeFileSync(
+    contractsDir + `/${name}-address.json`,
+    JSON.stringify({ address: contract.address }, undefined, 2)
+  );
+
+  const contractArtifact = artifacts.readArtifactSync(name);
+
+  fs.writeFileSync(
+    contractsDir + `/${name}.json`,
+    JSON.stringify(contractArtifact, null, 2)
+  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
